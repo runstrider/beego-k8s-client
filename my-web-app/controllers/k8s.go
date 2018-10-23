@@ -29,6 +29,14 @@ type K8sController struct {
 	beego.Controller
 }
 
+func deployRollBack(nameSpace, dpName string) error{
+	deployment, err := clientSet.ExtensionsV1beta1().Deployments(nameSpace).Get(dpName, metav1.GetOptions{})
+	if err != nil{
+		return fmt.Errorf("could not get deployment info: %v", err)
+	}
+
+}
+
 //pod中第一个容器中执行命令
 func podExecCMD(podName, podNamespace string, command string) (string, error){
 	var (
@@ -168,6 +176,9 @@ func init() {
 	clientSet = *clientset
 
 	nodeController()
+	//test
+	a,_:=clientset.Discovery().ServerGroups()
+	fmt.Println("a;sldkfj", a)
 
 }
 
