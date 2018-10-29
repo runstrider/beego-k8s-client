@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/workqueue"
 	"time"
-	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 //自定义controller

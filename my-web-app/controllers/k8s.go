@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/astaxie/beego"
@@ -11,45 +13,43 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/remotecommand"
 	"log"
 	"time"
-	"encoding/json"
-	"bytes"
-	"k8s.io/client-go/tools/remotecommand"
 )
 
 var (
 	kubeconfig = flag.String("kubeconfig", "/home/ubuntu/.kube/config", "abs path to the k conf")
 	clientSet  kubernetes.Clientset
-	caStore cache.Store
-	cliConf *rest.Config
+	caStore    cache.Store
+	cliConf    *rest.Config
 )
 
 type K8sController struct {
 	beego.Controller
 }
 
-func deployRollBack(nameSpace, dpName string) error{
+func deployRollBack(nameSpace, dpName string) error {
 	deployment, err := clientSet.ExtensionsV1beta1().Deployments(nameSpace).Get(dpName, metav1.GetOptions{})
-	if err != nil{
+	if err != nil {
 		return fmt.Errorf("could not get deployment info: %v", err)
 	}
 
 }
 
 //pod中第一个容器中执行命令
-func podExecCMD(podName, podNamespace string, command string) (string, error){
+func podExecCMD(podName, podNamespace string, command string) (string, error) {
 	var (
 		execOut bytes.Buffer
 		execErr bytes.Buffer
 	)
 
-	pod,err := clientSet.Core().Pods(podNamespace).Get(podName, metav1.GetOptions{})
-	if err != nil{
+	pod, err := clientSet.Core().Pods(podNamespace).Get(podName, metav1.GetOptions{})
+	if err != nil {
 		return "", fmt.Errorf("could not get pod info: %v", err)
 	}
 
-	if len(pod.Spec.Containers) == 0{
+	if len(pod.Spec.Containers) == 0 {
 		return "", fmt.Errorf("could not find container to exec to")
 	}
 
@@ -63,44 +63,44 @@ func podExecCMD(podName, podNamespace string, command string) (string, error){
 		Param("tty", "true")
 
 	exec, err := remotecommand.NewSPDYExecutor(cliConf, "POST", req.URL())
-	if err != nil{
+	if err != nil {
 		return "", fmt.Errorf("failed to init exector: %v", err)
 	}
 
 	err = exec.Stream(remotecommand.StreamOptions{
-		Stderr:&execErr,
-		Stdout:&execOut,
-		Tty:true,
+		Stderr: &execErr,
+		Stdout: &execOut,
+		Tty:    true,
 	})
 
-	if err != nil{
+	if err != nil {
 		return "", fmt.Errorf("conld not execute : %v", err)
 	}
 
-	if execErr.Len() >0{
+	if execErr.Len() > 0 {
 		return "", fmt.Errorf("stderr: %v", execErr.String())
 	}
 
 	return execOut.String(), nil
 }
 
-func createPod(){
+func createPod() {
 	var r v1.ResourceRequirements
 	j := `{"limits":{"cup":"2000m", "memory":"1Gi"}, "requests":{"cup":"2000m", "memory":"1Gi"}`
 	json.Unmarshal([]byte(j), &r)
 
 	pod := &v1.Pod{
-		ObjectMeta:metav1.ObjectMeta{
-			Name:"yangdong1",
-			Labels:map[string]string{
-				"app":"yangdong1",
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "yangdong1",
+			Labels: map[string]string{
+				"app": "yangdong1",
 			},
 		},
-		Spec:v1.PodSpec{Containers:[]v1.Container{{Name:"yangdongcontainer", Image:"ubuntu"}},},
+		Spec: v1.PodSpec{Containers: []v1.Container{{Name: "yangdongcontainer", Image: "ubuntu"}}},
 	}
 	fmt.Println("Creating pod...")
-	podRet, err:= clientSet.CoreV1().Pods("kube-system").Create(pod)
-	if err != nil{
+	podRet, err := clientSet.CoreV1().Pods("kube-system").Create(pod)
+	if err != nil {
 		panic(err)
 	}
 	fmt.Println("we had create pod name", podRet.Name)
@@ -108,14 +108,14 @@ func createPod(){
 }
 
 func (c *K8sController) Get() {
-/*
-	deployment, err := clientSet.AppsV1beta1().Deployments("default").Get("yangdong1", metav1.GetOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-	fmt.Println(deployment)
-	c.Ctx.ResponseWriter.Write([]byte(deployment.Name))
-*/
+	/*
+		deployment, err := clientSet.AppsV1beta1().Deployments("default").Get("yangdong1", metav1.GetOptions{})
+		if err != nil {
+			panic(err.Error())
+		}
+		fmt.Println(deployment)
+		c.Ctx.ResponseWriter.Write([]byte(deployment.Name))
+	*/
 	//create pod "yangdong1"
 	createPod()
 	c.Ctx.ResponseWriter.Write([]byte("success yangdong1 create"))
@@ -141,6 +141,7 @@ func getClient(confPath string) (*kubernetes.Clientset, error) {
 
 func nodeController() {
 	watchlist := cache.NewListWatchFromClient(clientSet.Core().RESTClient(), "pods", v1.NamespaceAll, fields.Everything())
+	//store 本质为缓存cache{}
 	store, controller := cache.NewInformer(watchlist, &v1.Pod{}, time.Second*30, cache.ResourceEventHandlerFuncs{
 		AddFunc:    handlePodAdd,
 		UpdateFunc: handlePodUpdate,
@@ -177,8 +178,7 @@ func init() {
 
 	nodeController()
 	//test
-	a,_:=clientset.Discovery().ServerGroups()
+	a, _ := clientset.Discovery().ServerGroups()
 	fmt.Println("a;sldkfj", a)
 
 }
-
