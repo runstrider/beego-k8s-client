@@ -1,6 +1,7 @@
 package controllers
 
 //下方注释很重要，是我实践发现的。
+//需要编译成bin文件运行，go run生成临时文件导致第一个进程运行完后被删除，后续的进程启动失败
 import (
 "os"
 "fmt"
